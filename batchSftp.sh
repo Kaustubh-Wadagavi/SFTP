@@ -10,7 +10,7 @@ fi
 
 source $CONFIG_FILE
 
-TOTAL_FILE_COUNT=$(find "$SOURCE_DIR" -type f | wc -l)
+TOTAL_FILE_COUNT=$( find "$SOURCE_DIR" -type f \( ! -iname "*.copied" \)  | wc -l )
 
 if [[ $TOTAL_FILE_COUNT -eq 0 ]]
 then
@@ -31,10 +31,16 @@ do
   SUB_DIR_FILE_COUNT=$(find "$SUB_DIR" -type f | wc -l) 
   if [[ $SUB_DIR_FILE_COUNT -ne 0 ]]
   then
-      find "${SUB_DIR}" -maxdepth 1 -type f | while read FILE
+      find "${SUB_DIR}" -maxdepth 1 -type f | while read FILE 
       do
 	REMOTE_DIR="${SUB_DIR/$SOURCE_DIR}"
-        echo "put '$FILE' '$REMOTE_WORKING_DIR$REMOTE_DIR'" >> $TEMP_FILE
+	FILE_NAME="$(basename -- "$FILE")"
+        if [[ "$FILE_NAME" != *.*.* ]]
+        then
+            echo "$FILE"
+            echo "put '$FILE' '$REMOTE_WORKING_DIR$REMOTE_DIR'" >> $TEMP_FILE
+            echo "$FILE" >> $COPIED_FILES_LIST
+        fi
       done
   fi
 done
@@ -67,24 +73,16 @@ echo "SFTP EXIT CODE IS: $SFTP_EXIT_CODE" >> $EMAIL_FILE
 
 if [[ $SFTP_EXIT_CODE -eq 0 ]]
 then
+   while read file; do mv "$file" "$file.copied"; done < $COPIED_FILES_LIST
    echo "$TOTAL_FILE_COUNT files are uploaded successfully." >> $EMAIL_FILE
-   find "${SOURCE_DIR}"/* -maxdepth 1 -type d | while read SUB_DIR
-   do
-      DIR="${SUB_DIR/$SOURCE_DIR}"
-       if [ -d "${MOVING_FILES_LOCATION}" ] && [ -d "${MOVING_FILES_LOCATION}${DIR}" ]
-       then
-	 mv "${SUB_DIR}"/* "${MOVING_FILES_LOCATION}${DIR}"
-       else
-         mkdir -p "${MOVING_FILES_LOCATION}${DIR}"
-         mv "${SUB_DIR}"/* "${MOVING_FILES_LOCATION}${DIR}"
-       fi
-   done
 else
-   echo "Script is failed"
+   echo "$(date +%F-%T)-INFO- Script is failed" >> $EMAIL_FILE
    curl --ssl-reqd --url 'smtps://smtp.gmail.com:465' -u $EMAIL_ID:$EMAIL_PASS --mail-from $EMAIL_ID --mail-rcpt $RCPT_EMAIL_ID --upload-file $EMAIL_FILE
 fi
 
-#rm -f $TEMP_FILE
-#rm -f $LOCK_FILE
+rm -f $TEMP_FILE
+rm -f $LOCK_FILE
 #rm $EMAIL_FILE
+rm $COPIED_FILES_LIST
+
 exit 0
