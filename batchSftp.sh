@@ -2,6 +2,7 @@
 
 CONFIG_FILE=$1
 
+
 if [ ! -f "$CONFIG_FILE" ]
 then
     echo "Please input the config file"
