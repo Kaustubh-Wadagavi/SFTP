@@ -2,7 +2,6 @@
 
 CONFIG_FILE=$1
 
-
 if [ ! -f "$CONFIG_FILE" ]
 then
     echo "Please input the config file"
@@ -32,13 +31,12 @@ do
   SUB_DIR_FILE_COUNT=$(find "$SUB_DIR" -type f | wc -l) 
   if [[ $SUB_DIR_FILE_COUNT -ne 0 ]]
   then
-      find "${SUB_DIR}" -maxdepth 1 -type f | while read FILE 
+      find "${SUB_DIR}" -maxdepth 1 -type f -printf '%T+\t%p\n' | sort -n | awk '{print $2}' | while read FILE 
       do
 	REMOTE_DIR="${SUB_DIR/$SOURCE_DIR}"
 	FILE_NAME="$(basename -- "$FILE")"
         if [[ "$FILE_NAME" != *.*.* ]]
         then
-            echo "$FILE"
             echo "put '$FILE' '$REMOTE_WORKING_DIR$REMOTE_DIR'" >> $TEMP_FILE
             echo "$FILE" >> $COPIED_FILES_LIST
         fi
@@ -61,7 +59,7 @@ EOF
 
 echo "$(date +%F-%T)-INFO- Synchronizing: Found $TOTAL_FILE_COUNT files in local folder to upload." >> $EMAIL_FILE
 
-expect -c " 
+sudo expect -c " 
   spawn sftp -i /home/krishagni/kaustubh-private -o "BatchMode=no" -b "$TEMP_FILE" -v "$USER@$HOST"
   expect \"password: \"
   send \"${PASSWORD}\r\"
@@ -83,7 +81,7 @@ fi
 
 rm -f $TEMP_FILE
 rm -f $LOCK_FILE
-#rm $EMAIL_FILE
+rm $EMAIL_FILE
 rm $COPIED_FILES_LIST
 
 exit 0
