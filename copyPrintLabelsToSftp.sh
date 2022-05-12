@@ -11,16 +11,6 @@ fi
 
 source $CONFIG_FILE
 
-TOTAL_FILE_COUNT=$(find "$SOURCE_DIR" -type f | wc -l)
-
-if [ $TOTAL_FILE_COUNT -eq 0 ]
-then
-  echo "No files found to transfer" >> $EMAIL_LOG_FILE_PATH/$current_time.log
-  rm -f $TEMP_FILE
-  rm -f $LOCK_FILE
-  exit 0;
-fi
-
 trap "rm -f $TEMP_FILE" 0 1 15
 trap "rm -f $LOCK_FILE; exit" INT TERM EXIT
 echo $$ > $LOCK_FILE
@@ -38,8 +28,6 @@ do
   fi
 done
 
-echo "quit" >> $TEMP_FILE   
-
 cat > $EMAIL_LOG_FILE_PATH/$current_time.log << EOF
 Subject: [ IMPORTATNT ALERT ] : '$CLIENT_NAME_AND_ENVIRONMENT' : SFTP COPY SCRIPT FAILED!
  
@@ -53,20 +41,29 @@ EOF
 
 echo "$(date +%F-%T)-INFO- Synchronizing: Found $TOTAL_FILE_COUNT files in local folder to upload." >> $EMAIL_LOG_FILE_PATH/$current_time.log
 
-expect -c " 
-  set timeout 300  
-  spawn sftp -o "BatchMode=no" -b "$TEMP_FILE" -v "$USER@$HOST"
-  expect \"password: \"
-  send \"${PASSWORD}\r\"
-  expect eof
-" >> $EMAIL_LOG_FILE_PATH/$current_time.log
+if [ -s "$TEMP_FILE" ]
+then
+   echo "quit" >> $TEMP_FILE
+   expect -c " 
+      set timeout 300  
+      spawn sftp -o "BatchMode=no" -b "$TEMP_FILE" -v "$USER@$HOST"
+      expect \"password: \"
+      send \"${PASSWORD}\r\"
+      expect eof
+   " >> $EMAIL_LOG_FILE_PATH/$current_time.log
 
-SFTP_EXIT_CODE=$?
-echo "SFTP EXIT CODE IS: $SFTP_EXIT_CODE" >> $EMAIL_LOG_FILE_PATH/$current_time.log
+   SFTP_EXIT_CODE=$?
+   echo "SFTP EXIT CODE IS: $SFTP_EXIT_CODE" >> $EMAIL_LOG_FILE_PATH/$current_time.log
+else
+   echo "No files found to transfer" >> $EMAIL_LOG_FILE_PATH/$current_time.log
+   rm -f $TEMP_FILE
+   rm -f $LOCK_FILE
+   exit 0
+fi
 
 if [[ $SFTP_EXIT_CODE -eq 0 ]]
 then
-   echo "$TOTAL_FILE_COUNT files are uploaded successfully." >> $EMAIL_LOG_FILE_PATH/$current_time.log
+   echo "Files are uploaded successfully" >> $EMAIL_LOG_FILE_PATH/$current_time.log
    find "${SOURCE_DIR}"/* -maxdepth 1 -type d | while read SUB_DIR
    do
       DIR="${SUB_DIR/$SOURCE_DIR}"
