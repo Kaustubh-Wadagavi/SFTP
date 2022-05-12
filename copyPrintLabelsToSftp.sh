@@ -13,6 +13,14 @@ source $CONFIG_FILE
 
 TOTAL_FILE_COUNT=$(find "$SOURCE_DIR" -type f | wc -l)
 
+if [ $TOTAL_FILE_COUNT -eq 0 ]
+then
+  echo "No files found to transfer" >> $EMAIL_LOG_FILE_PATH/$current_time.log
+  rm -f $TEMP_FILE
+  rm -f $LOCK_FILE
+  exit 0;
+fi
+
 trap "rm -f $TEMP_FILE" 0 1 15
 trap "rm -f $LOCK_FILE; exit" INT TERM EXIT
 echo $$ > $LOCK_FILE
