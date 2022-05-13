@@ -1,9 +1,11 @@
 #!/bin/bash
 
+CONFIG_FILE=$1
 CURRENT_TIME=$(date "+%Y.%m.%d-%H.%M.%S")
 
 sendEmail() {
   curl --ssl-reqd --url 'smtps://smtp.gmail.com:465' -u $EMAIL_ID:$EMAIL_PASS --mail-from $EMAIL_ID --mail-rcpt $RCPT_EMAIL_ID --upload-file $EMAIL_LOG_FILE_PATH/$CURRENT_TIME.log
+
 }
 
 moveFiles() {
@@ -70,8 +72,6 @@ generateTransferBatchFile() {
 }
 
 main() {
-  CONFIG_FILE=$1
-
   if [ ! -f "$CONFIG_FILE" ]
   then
     echo "Please input the config file"
