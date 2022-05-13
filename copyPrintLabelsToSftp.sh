@@ -12,12 +12,12 @@ moveFiles() {
   find "${SOURCE_DIR}"/* -maxdepth 1 -type d | while read SUB_DIR
   do
     DIR="${SUB_DIR/$SOURCE_DIR}"
-    if [ -d "${MOVING_FILES_LOCATION}" ] && [ -d "${MOVING_FILES_LOCATION}${DIR}" ]
+    if [ -d "${UPLOADED_FILES_DIR}" ] && [ -d "${UPLOADED_FILES_DIR}${DIR}" ]
     then
-      mv "${SUB_DIR}"/* "${MOVING_FILES_LOCATION}${DIR}"
+      mv "${SUB_DIR}"/* "${UPLOADED_FILES_DIR}${DIR}"
     else
-      mkdir -p "${MOVING_FILES_LOCATION}${DIR}"
-      mv "${SUB_DIR}"/* "${MOVING_FILES_LOCATION}${DIR}"
+      mkdir -p "${UPLOADED_FILES_DIR}${DIR}"
+      mv "${SUB_DIR}"/* "${UPLOADED_FILES_DIR}${DIR}"
     fi
   done
 
