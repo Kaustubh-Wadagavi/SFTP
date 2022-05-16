@@ -111,9 +111,9 @@ main() {
   if [ $STATUS -eq 0 ]
   then
     moveFiles
- #   rm -f $FILES_LIST
- #   rm -f $TEMP_FILE
- #   rm -f $LOCK_FILE
+    rm -f $FILES_LIST
+    rm -f $TEMP_FILE
+    rm -f $LOCK_FILE
     exit 0;
   else
     sendEmail
