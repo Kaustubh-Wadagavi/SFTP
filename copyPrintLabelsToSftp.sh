@@ -9,17 +9,19 @@ sendEmail() {
 }
 
 moveFiles() {
-  find "${SOURCE_DIR}"/* -maxdepth 1 -type d | while read SUB_DIR
+  while IFS=, read -r FILE_NAME LOCATION
   do
-    DIR="${SUB_DIR/$SOURCE_DIR}"
-    if [ -d "${UPLOADED_FILES_DIR}" ] && [ -d "${UPLOADED_FILES_DIR}${DIR}" ]
+    BASE_DIR=$(dirname $FILE_NAME)
+    DIR="${BASE_DIR/$SOURCE_DIR}"
+    echo $DIR
+    if [ -d "${UPLOADED_FILES_DIR}" ] && [ -d "${UPLOADED_FILES_DIR}/${DIR}" ]
     then
-      mv "${SUB_DIR}"/* "${UPLOADED_FILES_DIR}${DIR}"
+       mv "$FILE_NAME" "${UPLOADED_FILES_DIR}/${DIR}"
     else
-      mkdir -p "${UPLOADED_FILES_DIR}${DIR}"
-      mv "${SUB_DIR}"/* "${UPLOADED_FILES_DIR}${DIR}"
-    fi
-  done
+       mkdir -p "${UPLOADED_FILES_DIR}/${DIR}"
+       mv "$FILE_NAME" "${UPLOADED_FILES_DIR}/${DIR}"
+   fi
+  done < $FILES_LIST
 
 }
 
@@ -56,6 +58,14 @@ EOF
 }
 
 generateTransferBatchFile() {
+  while IFS=, read -r FILE_NAME LOCATION
+  do
+    echo "mput '$FILE_NAME' '$LOCATION'" >> $TEMP_FILE
+  done < $FILES_LIST
+
+}
+
+getListOfFilesToTransfer() {
   trap "rm -f $TEMP_FILE" 0 1 15
   trap "rm -f $LOCK_FILE; exit" INT TERM EXIT
   echo $$ > $LOCK_FILE
@@ -65,7 +75,7 @@ generateTransferBatchFile() {
     find "${SUB_DIR}" -maxdepth 1 -type f | while read FILE
     do
       REMOTE_DIR="${SUB_DIR/$SOURCE_DIR}"
-      echo "mput '$FILE' '$REMOTE_WORKING_DIR$REMOTE_DIR'" >> $TEMP_FILE
+      echo "$FILE,$REMOTE_WORKING_DIR$REMOTE_DIR" >> $FILES_LIST
     done
   done
 
@@ -79,17 +89,21 @@ main() {
   fi
 
   source $CONFIG_FILE
-  generateTransferBatchFile
 
-  if [ -s "$TEMP_FILE" ]
+  getListOfFilesToTransfer
+
+  if [ -s "$FILES_LIST" ]
   then
-    enableLogging
+    generateTransferBatchFile
   else
     echo "No files found to transfer" >> $EMAIL_LOG_FILE_PATH/$CURRENT_TIME.log
+    rm -f $FILES_LIST
     rm -f $TEMP_FILE
     rm -f $LOCK_FILE
     exit 0;
   fi
+
+  enableLogging
 
   transferFiles
   local STATUS=$?
@@ -97,8 +111,9 @@ main() {
   if [ $STATUS -eq 0 ]
   then
     moveFiles
-    rm -f $TEMP_FILE
-    rm -f $LOCK_FILE
+ #   rm -f $FILES_LIST
+ #   rm -f $TEMP_FILE
+ #   rm -f $LOCK_FILE
     exit 0;
   else
     sendEmail
